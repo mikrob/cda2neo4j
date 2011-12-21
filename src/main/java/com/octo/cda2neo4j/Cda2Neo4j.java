@@ -1,6 +1,7 @@
 package com.octo.cda2neo4j;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -11,27 +12,22 @@ import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 
-
-
 public class Cda2Neo4j {
 
 	private Graph graph;
 	private GraphDatabaseService graphDb;
 	private Index<Node> nodeIndex;
-	
-	
+
 	private static final String DB_PATH = "neo4j-store";
-	
+
 	public Cda2Neo4j(Graph graph) {
 		this.graph = graph;
 		Map<String, String> config = EmbeddedGraphDatabase
 				.loadConfigurations("src/main/resources/neo4j.properties");
-		graphDb = new EmbeddedGraphDatabase(DB_PATH,
-				config);
+		graphDb = new EmbeddedGraphDatabase(DB_PATH, config);
 		registerShutdownHook(graphDb);
 		nodeIndex = graphDb.index().forNodes("nodes");
 	}
-	
 
 	private static void registerShutdownHook(final GraphDatabaseService graphDb) {
 		// Registers a shutdown hook for the Neo4j instance so that it
@@ -44,58 +40,55 @@ public class Cda2Neo4j {
 			}
 		});
 	}
-	
-	public void insertGraphToNeo4j() {
-		Node root;
-		Node secondNode;
-		Node thirdNode;
-		Relationship relationship1;
-		Relationship relationship2;
 
+	public void insertGraphToNeo4j() {
 		Transaction tx = graphDb.beginTx();
 		try {
-			root = graphDb.createNode();
-			root.setProperty("name", "BusinessCommand");
-			secondNode = graphDb.createNode();
-			secondNode.setProperty("name", "XmlBusinessCommand");
-			thirdNode = graphDb.createNode();
-			thirdNode.setProperty("name", "JSONBusinessCommand");
-
-			relationship1 = root.createRelationshipTo(secondNode,
-					RelTypes.IMPLEMENTS);
-			relationship1.setProperty("message", "implements");
-			relationship2 = root.createRelationshipTo(thirdNode,
-					RelTypes.IMPLEMENTS);
-			relationship2.setProperty("message", "implements");
-
-			nodeIndex.add(root, "name", "BusinessCommand");
-			nodeIndex.add(secondNode, "name", "XmlBusinessCommand");
-			nodeIndex.add(thirdNode, "name", "JSONBusinessCommand");
-
-			// make a search in the graph
-			IndexHits<Node> nodes = nodeIndex.get("name", "XmlBusinessCommand");
-			for (Node node : nodes) {
-				System.out.println(node.getProperty("name"));
+			Set<Map.Entry<String, DGNode>> set = graph.nodeList.entrySet();
+			for (Map.Entry<String, DGNode> node : set) {
+				// get the attributes
+				String className = node.getKey();
+				DGNode nodeContent = node.getValue();
+				// create the neo4j node
+				Node neoNode = createNeo4jNode(className);
+				
+				// extends
+				if (nodeContent.parent != null) {
+					Node neoNodeParent = createNeo4jNode(nodeContent.parent.name);
+					neoNode.createRelationshipTo(neoNodeParent, RelTypes.EXTENDS);
+				}
+				
+				//implements
+				for (DGNode interf : nodeContent.implementz) {
+					Node interfaceImplemented = createNeo4jNode(interf.name);
+					neoNode.createRelationshipTo(interfaceImplemented, RelTypes.IMPLEMENTS);
+				}
+				// use
+				for (DGNode uzed : nodeContent.useds) {
+					Node classUsed = createNeo4jNode(uzed.name);
+					neoNode.createRelationshipTo(classUsed, RelTypes.IMPLEMENTS);
+				}
 			}
-
-			// delete the graph
-			for (Relationship relationship : root.getRelationships(
-					RelTypes.IMPLEMENTS, Direction.OUTGOING)) {
-				Node theNode = relationship.getEndNode();
-				nodeIndex.remove(theNode, "name",
-						theNode.getProperty("name"));
-				theNode.delete();
-				relationship.delete();
-			}
-			root.delete();
-
 			tx.success();
 		} finally {
 			tx.finish();
 		}
 		graphDb.shutdown();
 	}
+
+	// Create a node and add it to index
+	private Node createNeo4jNode(String className) {
+		Node neoNode = graphDb.createNode();
+		neoNode.setProperty("className", className);
+		nodeIndex.add(neoNode, "className", className);
+		
+		return neoNode;
+	}
 	
+
+	public void cleanGraph() {
+		nodeIndex.delete();
+	}
 	
 
 }
