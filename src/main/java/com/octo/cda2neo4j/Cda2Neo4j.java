@@ -39,6 +39,7 @@ public class Cda2Neo4j {
 	}
 
 	public void insertGraphToNeo4j() {
+		System.out.println("Begin insertion in neo4j");
 		Transaction tx = graphDb.beginTx();
 		try {
 			Set<Map.Entry<String, CdaNode>> set = graph.nodeList.entrySet();
@@ -71,6 +72,7 @@ public class Cda2Neo4j {
 			tx.finish();
 		}
 		graphDb.shutdown();
+		System.out.println("End insertion in neo4j");
 	}
 
 	// Create a node and add it to index

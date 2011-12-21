@@ -92,14 +92,16 @@ public class Cda2Graph {
 			System.exit(0);
 			return;
 		}
-
+		long begin = System.currentTimeMillis();
 		String inputFile = FilenameUtils.normalize(cl.getOptionValue("in"));
 		String outputFile = FilenameUtils.normalize(cl.getOptionValue("out"));
 		// here we work
 		Cda2Graph cda2Graphviz = new Cda2Graph();
-		cda2Graphviz.cdaXml2GraphViz(inputFile, outputFile);
+		cda2Graphviz.makeGraph(inputFile, outputFile);
 		//cda2Graphviz.makeiPhoneGraph(outputFile);		
 		cda2Graphviz.createNeo4jGraph();
+		long time = System.currentTimeMillis() - begin;
+		System.out.println("Took : " + time + " ms to execute" );
 	}
 
 	private static Option getOption(String opt, boolean hasArg,
@@ -109,7 +111,7 @@ public class Cda2Graph {
 		return p;
 	}
 
-	public void cdaXml2GraphViz(String inputFile, String outputFile) {
+	public void makeGraph(String inputFile, String outputFile) {
 		try {
 
 			DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
@@ -120,10 +122,6 @@ public class Cda2Graph {
 			Document doc = docBuilder.parse(new File(inputFile));
 			doc.getDocumentElement().normalize();
 			parseCdaXml(doc);
-			
-			Cda2Graphviz graphviz = new Cda2Graphviz();
-			graphviz.writeGraphViz(data.graph.nodeList, outputFile);
-			writeNbDependenciesPerCommand(outputFile);
 			System.out.println(" Graph contains : " + data.graph.nodeList.size());
 
 		} catch (SAXParseException err) {
