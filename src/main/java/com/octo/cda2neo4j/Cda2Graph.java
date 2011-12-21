@@ -47,10 +47,10 @@ public class Cda2Graph {
 	};
 
 	private static final String [] ING_CLASS_FILTER_LIST = {		
-		".XMLBusinessCommand",
-		".BusinessCommand",
+		//".XMLBusinessCommand",
+		//".BusinessCommand",
 		".EdgeCommand",
-		"Exception",
+		//"Exception",
 		".AllServices",
 		".DirectGatewayClientBusinessCommand",
 		".ServiceLocator",
@@ -220,6 +220,7 @@ public class Cda2Graph {
 
 	private CdaNode getNewNode(String name) {
 		CdaNode nodeToAdd = data.graph.nodeList.get(name);
+		
 		if (nodeToAdd == null) {
 			nodeToAdd = new CdaNode(name);
 			data.graph.nodeList.put(name, nodeToAdd);
