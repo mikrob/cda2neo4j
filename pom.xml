@@ -43,7 +43,7 @@
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
 				<configuration>
-					<mainClass>com.ingdirect.dgng.dgmap.Cda2Graphviz</mainClass>
+					<mainClass>com.octo.cda2neo4j.Cda2Graph</mainClass>
 				</configuration>
 			</plugin>
 		</plugins>

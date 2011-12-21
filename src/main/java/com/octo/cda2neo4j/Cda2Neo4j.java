@@ -3,13 +3,10 @@ package com.octo.cda2neo4j;
 import java.util.Map;
 import java.util.Set;
 
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
-import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 
 public class Cda2Neo4j {
@@ -44,11 +41,11 @@ public class Cda2Neo4j {
 	public void insertGraphToNeo4j() {
 		Transaction tx = graphDb.beginTx();
 		try {
-			Set<Map.Entry<String, DGNode>> set = graph.nodeList.entrySet();
-			for (Map.Entry<String, DGNode> node : set) {
+			Set<Map.Entry<String, CdaNode>> set = graph.nodeList.entrySet();
+			for (Map.Entry<String, CdaNode> node : set) {
 				// get the attributes
 				String className = node.getKey();
-				DGNode nodeContent = node.getValue();
+				CdaNode nodeContent = node.getValue();
 				// create the neo4j node
 				Node neoNode = createNeo4jNode(className);
 				
@@ -59,12 +56,12 @@ public class Cda2Neo4j {
 				}
 				
 				//implements
-				for (DGNode interf : nodeContent.implementz) {
+				for (CdaNode interf : nodeContent.implementz) {
 					Node interfaceImplemented = createNeo4jNode(interf.name);
 					neoNode.createRelationshipTo(interfaceImplemented, RelTypes.IMPLEMENTS);
 				}
 				// use
-				for (DGNode uzed : nodeContent.useds) {
+				for (CdaNode uzed : nodeContent.useds) {
 					Node classUsed = createNeo4jNode(uzed.name);
 					neoNode.createRelationshipTo(classUsed, RelTypes.IMPLEMENTS);
 				}

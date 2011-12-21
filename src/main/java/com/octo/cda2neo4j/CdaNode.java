@@ -3,19 +3,19 @@ package com.octo.cda2neo4j;
 import java.util.HashSet;
 import java.util.Set;
 
-public class DGNode {
+public class CdaNode {
 
 	public String name;
 
-	public DGNode parent;
+	public CdaNode parent;
 
 	public String type;
 
-	public Set<DGNode> implementz = new HashSet<DGNode>();
+	public Set<CdaNode> implementz = new HashSet<CdaNode>();
 
-	public Set<DGNode> useds = new HashSet<DGNode>();
+	public Set<CdaNode> useds = new HashSet<CdaNode>();
 
-	public DGNode(String name2) {
+	public CdaNode(String name2) {
 		this.name = name2;
 	}
 
@@ -24,7 +24,7 @@ public class DGNode {
 		return name.hashCode();
 	}
 
-	public boolean hasSameName(DGNode obj) {
+	public boolean hasSameName(CdaNode obj) {
 		return this.name.equals(obj.name);
 	}
 
@@ -36,7 +36,7 @@ public class DGNode {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		DGNode other = (DGNode) obj;
+		CdaNode other = (CdaNode) obj;
 		if (name == null) {
 			if (other.name != null)
 				return false;

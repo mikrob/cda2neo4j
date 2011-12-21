@@ -5,9 +5,9 @@ import java.util.Map;
 
 public class Graph {
 	
-	public Map<String, DGNode> nodeList;
+	public Map<String, CdaNode> nodeList;
 
 	public Graph() {
-		this.nodeList = new HashMap<String, DGNode>();
+		this.nodeList = new HashMap<String, CdaNode>();
 	}
 }

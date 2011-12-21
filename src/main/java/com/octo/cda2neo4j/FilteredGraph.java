@@ -1,6 +1,7 @@
 package com.octo.cda2neo4j;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -14,15 +15,15 @@ import java.util.Set;
  */
 public class FilteredGraph {
 
-	private Map<String, DGNode> baseGraph;
+	private Map<String, CdaNode> baseGraph;
 
-	private Set<DGNode> graphFiltered;
+	private Set<CdaNode> graphFiltered;
 
-	public Set<DGNode> getGraphFiltered() {
+	public Set<CdaNode> getGraphFiltered() {
 		return graphFiltered;
 	}
 
-	public void setGraphFiltered(Set<DGNode> graphFiltered) {
+	public void setGraphFiltered(Set<CdaNode> graphFiltered) {
 		this.graphFiltered = graphFiltered;
 	}
 
@@ -40,13 +41,13 @@ public class FilteredGraph {
 			"com.ingdirect.dgng.ws.virement.MoveMoneyWebService",
 			"com.ingdirect.dgng.ws.virement.PendingTransfersWebService" };
 
-	public FilteredGraph(Map<String, DGNode> graph) {
+	public FilteredGraph(Map<String, CdaNode> graph) {
 		this.entryPoints = iPhoneFilters;
 		this.baseGraph = graph;
-		graphFiltered = new HashSet<DGNode>();
+		graphFiltered = new HashSet<CdaNode>();
 	}
 
-	public FilteredGraph(Map<String, DGNode> graph, String[] filters) {
+	public FilteredGraph(Map<String, CdaNode> graph, String[] filters) {
 		this.entryPoints = filters;
 		this.baseGraph = graph;
 
@@ -54,7 +55,7 @@ public class FilteredGraph {
 
 	public void filterGraph() {
 		for (String filter : entryPoints) {
-			DGNode wsNode = baseGraph.get(filter);
+			CdaNode wsNode = baseGraph.get(filter);
 			if (wsNode != null) {
 				addNodeDepenciesToGraph(wsNode);
 			}
@@ -62,7 +63,7 @@ public class FilteredGraph {
 		System.out.println("Filter graph size : " + graphFiltered.size());
 	}
 
-	private void addNodeDepenciesToGraph(DGNode node) {
+	private void addNodeDepenciesToGraph(CdaNode node) {
 		if (!graphFiltered.contains(node)) {
 			graphFiltered.add(node);
 		} else {
@@ -72,24 +73,24 @@ public class FilteredGraph {
 			graphFiltered.add(node.parent);
 			addNodeDepenciesToGraph(node.parent);
 		}
-		for (DGNode impl : node.implementz) {
-			for (DGNode clazz : this.getClassesForInterface(impl.name)) {
+		for (CdaNode impl : node.implementz) {
+			for (CdaNode clazz : this.getClassesForInterface(impl.name)) {
 				addNodeDepenciesToGraph(baseGraph.get(clazz.name));
 			}
 		}
 		graphFiltered.addAll(node.implementz);
-		for (DGNode used : node.useds) {
-			for (DGNode clazz : this.getClassesForInterface(used.name)) {
+		for (CdaNode used : node.useds) {
+			for (CdaNode clazz : this.getClassesForInterface(used.name)) {
 				addNodeDepenciesToGraph(baseGraph.get(clazz.name));
 			}
 		}
 		graphFiltered.addAll(node.useds);
 	}
 
-	private List<DGNode> getClassesForInterface(String interfaceName) {
-		List<DGNode> result = new ArrayList<DGNode>();
-		for (Map.Entry<String, DGNode> entry : baseGraph.entrySet()) {
-			for (DGNode nodeInterface : entry.getValue().implementz) {
+	private List<CdaNode> getClassesForInterface(String interfaceName) {
+		List<CdaNode> result = new ArrayList<CdaNode>();
+		for (Map.Entry<String, CdaNode> entry : baseGraph.entrySet()) {
+			for (CdaNode nodeInterface : entry.getValue().implementz) {
 				if (nodeInterface.name.equals(interfaceName)) {
 					result.add(entry.getValue());
 				}
@@ -98,12 +99,28 @@ public class FilteredGraph {
 		return result;
 	}
 
-	public Map<String, DGNode> getBaseGraph() {
+	public Map<String, CdaNode> getBaseGraph() {
 		return baseGraph;
 	}
 
-	public void setBaseGraph(Map<String, DGNode> baseGraph) {
+	public void setBaseGraph(Map<String, CdaNode> baseGraph) {
 		this.baseGraph = baseGraph;
 	}
+	
+	protected void makeiPhoneGraph(String outputFile) {
+		Cda2Graphviz graphviz = new Cda2Graphviz();
+		Map<String, CdaNode> map = new HashMap<String, CdaNode>();
+		for (CdaNode node : graphFiltered) {
+			map.put(node.name, node);
+		}
+		try {
+			String nbFileName = outputFile.substring(0, outputFile.indexOf("."));
+			nbFileName += "_iPhone.dot";
+			graphviz.writeGraphViz(map, nbFileName);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
+	
 }

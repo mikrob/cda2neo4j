@@ -8,14 +8,12 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -28,7 +26,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -38,9 +35,7 @@ import org.xml.sax.SAXParseException;
 
 public class Cda2Graph {
 
-	private Graph graph;
-	
-	Map<DGNode, Integer> nbDependenciesPerCommand;
+	Cda2Graphviz data = new Cda2Graphviz();
 
 	private static final String ING_FILTER = "com.ingdirect";
 	
@@ -65,8 +60,8 @@ public class Cda2Graph {
 	};
 
 	public Cda2Graph() {
-		this.graph = new Graph();
-		nbDependenciesPerCommand = new HashMap<DGNode, Integer>();
+		this.data.graph = new Graph();
+		data.nbDependenciesPerCommand = new HashMap<CdaNode, Integer>();
 	}
 
 	// main with super GUI :-)
@@ -124,10 +119,12 @@ public class Cda2Graph {
 			DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
 			Document doc = docBuilder.parse(new File(inputFile));
 			doc.getDocumentElement().normalize();
-			getNamespacesForDoc(doc);
-			writeGraphViz(graph.nodeList, outputFile);
+			parseCdaXml(doc);
+			
+			Cda2Graphviz graphviz = new Cda2Graphviz();
+			graphviz.writeGraphViz(data.graph.nodeList, outputFile);
 			writeNbDependenciesPerCommand(outputFile);
-			System.out.println(" Graph contains : " + graph.nodeList.size());
+			System.out.println(" Graph contains : " + data.graph.nodeList.size());
 
 		} catch (SAXParseException err) {
 			System.out.println("** Parsing error" + ", line "
@@ -141,6 +138,10 @@ public class Cda2Graph {
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
+	}
+
+	private void parseCdaXml(Document doc) {
+		getNamespacesForDoc(doc);
 	}
 
 	private void getNamespacesForDoc(Document doc) {
@@ -166,10 +167,10 @@ public class Cda2Graph {
 					Element typeElement = (Element) typeNode;
 					String name = typeElement.getAttribute("name");
 					if (!toBeIgnored(name)) {
-						DGNode node = getNewNode(name);
+						CdaNode node = getNewNode(name);
 						node.type = typeElement.getAttribute("classification");
 						getDependenciesForType(typeElement, node);
-						graph.nodeList.put(node.name, node);
+						data.graph.nodeList.put(node.name, node);
 					}
 				}
 			}
@@ -177,7 +178,7 @@ public class Cda2Graph {
 		}
 	}
 
-	private void getDependenciesForType(Element typeElement, DGNode node) {
+	private void getDependenciesForType(Element typeElement, CdaNode node) {
 		NodeList dependencies = typeElement.getChildNodes();
 		for (int idz = 0; idz < dependencies.getLength(); idz++) {
 			Node dependenciesNode = dependencies.item(idz);
@@ -189,7 +190,7 @@ public class Cda2Graph {
 	}
 
 	private void getDependsOnForDependencies(Element dependenciesElement,
-			DGNode node) {
+			CdaNode node) {
 		NodeList dependsOnList = dependenciesElement.getChildNodes();
 		for (int i = 0; i < dependsOnList.getLength(); i++) {
 			Node dependsOnNode = dependsOnList.item(i);
@@ -200,7 +201,7 @@ public class Cda2Graph {
 		}
 	}
 
-	private void extractHierarchy(Element dependsOnElement, DGNode node) {
+	private void extractHierarchy(Element dependsOnElement, CdaNode node) {
 		String name = dependsOnElement.getAttribute("name");
 		if (!name.startsWith(ING_FILTER)) {
 			return;
@@ -209,8 +210,7 @@ public class Cda2Graph {
 			return;
 		}
 		String classification = dependsOnElement.getAttribute("classification");
-		DGNode nodeToAdd = getNewNode(name);
-		///TODO make neo 4j relationsship
+		CdaNode nodeToAdd = getNewNode(name);
 		if (classification.equals("extends")) {
 			node.parent = nodeToAdd;
 		} else if (classification.equals("implements")) {
@@ -220,121 +220,32 @@ public class Cda2Graph {
 		}
 	}
 
-	private DGNode getNewNode(String name) {
-		DGNode nodeToAdd = graph.nodeList.get(name);
+	private CdaNode getNewNode(String name) {
+		CdaNode nodeToAdd = data.graph.nodeList.get(name);
 		if (nodeToAdd == null) {
-			nodeToAdd = new DGNode(name);
-			graph.nodeList.put(name, nodeToAdd);
+			nodeToAdd = new CdaNode(name);
+			data.graph.nodeList.put(name, nodeToAdd);
 		}
 
 		return nodeToAdd;
 	}
 	
 	private void createNeo4jGraph() {
-		Cda2Neo4j neo4j = new Cda2Neo4j(this.graph);
+		Cda2Neo4j neo4j = new Cda2Neo4j(this.data.graph);
 		neo4j.insertGraphToNeo4j();
 	}
 	
 	
-	private void makeiPhoneGraph(String outputFile) {
-		FilteredGraph iPhoneGraph = new FilteredGraph(graph.nodeList);
-		iPhoneGraph.filterGraph();
-		Set<DGNode> set = iPhoneGraph.getGraphFiltered();
-		Map<String, DGNode> map = new HashMap<String, DGNode>();
-		for (DGNode node : set) {
-			map.put(node.name, node);
-		}
-		try {
-			String nbFileName = outputFile.substring(0, outputFile.indexOf("."));
-			nbFileName += "_iPhone.dot";
-			writeGraphViz(map, nbFileName);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void writeGraphViz(Map<String, DGNode> graphToWrite, String outputFile) throws Exception {
-		File file = new File(outputFile);
-		System.out.println(file.getAbsolutePath());
-		FileWriter writer = new FileWriter(file);
-		BufferedWriter bufferedWriter = new BufferedWriter(writer, 512);
-		PrintWriter printWriter = new PrintWriter(bufferedWriter, true);
-		Set<DGNode> classes = new HashSet<DGNode>();
-		Set<DGNode> interfaces = new HashSet<DGNode>();
-		for (Map.Entry<String, DGNode> entry : graphToWrite.entrySet()) {
-			if (entry.getValue().type != null
-					&& entry.getValue().type.equals("interface")) {
-				interfaces.add(entry.getValue());
-			} else {
-				classes.add(entry.getValue());
-			}
-		}
-
-		printWriter.print("digraph PhiloDilemma {");
-		// printWriter.print("digraph TrafficLights {");
-		printWriter.println();
-		printWriter.print("node [shape=box]; ");
-		for (DGNode clazz : classes) {
-			String name = clazz.name;
-			printWriter.println(printNameGv(name) + ";");
-		}
-		printWriter.println();
-		printWriter.print("node [shape=circle,fixedsize=false];  ");
-		for (DGNode clazz : interfaces) {
-			String name = clazz.name;
-			printWriter.println(printNameGv(name) + ";");
-		}
-		printWriter.println();
-		// print edge
-		int nbedge = 0;
-		for (Map.Entry<String, DGNode> entry : graphToWrite.entrySet()) {
-			DGNode currentNode = entry.getValue(); // iterate over node datas.
-			int nbDep = 0;
-			if (currentNode.parent != null) {
-				String color = "[color=\"red\"]";
-				printWriter.println(printNameGv(currentNode.name) + "->"
-						+ printNameGv(currentNode.parent.name) + color + ";");
-				nbedge++;
-				nbDep++;
-			}
-			for (DGNode interf : currentNode.implementz) {
-				String color = "[color=\"blue\"]";
-				printWriter.println(printNameGv(currentNode.name) + "->"
-						+ printNameGv(interf.name) + color + ";");
-				nbedge++;
-				nbDep++;
-			}
-
-			for (DGNode uzed : currentNode.useds) {
-				String color = "[color=\"green\"]";
-				printWriter.println(printNameGv(currentNode.name) + "->"
-						+ printNameGv(uzed.name) + color + ";");
-				nbedge++;
-				nbDep++;
-			}
-			nbDependenciesPerCommand.put(currentNode, nbDep);
-
-		}
-		printWriter.println();
-		printWriter.println();
-		printWriter.println("fontsize=8;");
-		printWriter.println("}");
-		printWriter.flush();
-		printWriter.close();
-		System.out.println("NB Edege : " + nbedge);
-
-	}
-	
 	private void writeNbDependenciesPerCommand(String outputFile) throws Exception {
-		String nbFileName = outputFile.substring(0, outputFile.indexOf("."));
+		String nbFileName = outputFile;
 		nbFileName += ".nbdep";
 		File file = new File(nbFileName);
 		System.out.println("NbDep File : " + file.getAbsolutePath());
 		FileWriter writer = new FileWriter(file);
 		BufferedWriter bufferedWriter = new BufferedWriter(writer, 512);
 		PrintWriter printWriter = new PrintWriter(bufferedWriter, true);
-		Map<DGNode, Integer> sortedMap = sortByValue(nbDependenciesPerCommand);
-		for (Map.Entry<DGNode, Integer> entry : sortedMap.entrySet()) {
+		Map<CdaNode, Integer> sortedMap = sortByValue(data.nbDependenciesPerCommand);
+		for (Map.Entry<CdaNode, Integer> entry : sortedMap.entrySet()) {
 			printWriter.println(entry.getKey().name + " : " + entry.getValue());
 		}
 		printWriter.flush();
@@ -364,25 +275,21 @@ public class Cda2Graph {
 	}
 	
 
-	private String printNameGv(String name) {
-		String[] splitted = StringUtils.split(name, ".");
-		String finalName = splitted[splitted.length - 3] + "." + splitted[splitted.length - 2] + "." + splitted[splitted.length - 1];
-		return "\"" + finalName + "\"";
-	}
 	
-	private Map<DGNode, Integer> sortByValue(Map<DGNode, Integer> map) {
-	     List<Entry<DGNode, Integer>> list = new LinkedList<Entry<DGNode, Integer>>(map.entrySet());
-	     Collections.sort(list, new Comparator<Entry<DGNode, Integer>>() {
-	          public int compare(Entry<DGNode, Integer> o1, Entry<DGNode, Integer> o2) {
-	               return ((Comparable<Integer>) ((Map.Entry<DGNode, Integer>) (o1)).getValue())
-	              .compareTo(((Map.Entry<DGNode, Integer>) (o2)).getValue());
+	
+	private Map<CdaNode, Integer> sortByValue(Map<CdaNode, Integer> map) {
+	     List<Entry<CdaNode, Integer>> list = new LinkedList<Entry<CdaNode, Integer>>(map.entrySet());
+	     Collections.sort(list, new Comparator<Entry<CdaNode, Integer>>() {
+	          public int compare(Entry<CdaNode, Integer> o1, Entry<CdaNode, Integer> o2) {
+	               return ((Comparable<Integer>) ((Map.Entry<CdaNode, Integer>) (o1)).getValue())
+	              .compareTo(((Map.Entry<CdaNode, Integer>) (o2)).getValue());
 	          }
 
 	     });
 
-	    Map<DGNode, Integer> result = new LinkedHashMap<DGNode, Integer>();
-	    for (Iterator<Map.Entry<DGNode, Integer>> it = list.iterator(); it.hasNext();) {
-	        Map.Entry<DGNode, Integer> entry =  it.next();
+	    Map<CdaNode, Integer> result = new LinkedHashMap<CdaNode, Integer>();
+	    for (Iterator<Map.Entry<CdaNode, Integer>> it = list.iterator(); it.hasNext();) {
+	        Map.Entry<CdaNode, Integer> entry =  it.next();
 	        result.put(entry.getKey(), entry.getValue());
 	    }
 	    return result;
