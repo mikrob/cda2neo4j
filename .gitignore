@@ -1,0 +1,6 @@
+target/
+.project
+.settings
+.classpath
+DGNG.odem
+DG_without_cycle.xml
