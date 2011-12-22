@@ -1,19 +1,8 @@
 package com.octo.cda2neo4j;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -139,24 +128,35 @@ public class Cda2Graph {
 	}
 
 	private void parseCdaXml(Document doc) {
-		getNamespacesForDoc(doc);
+		NodeList containers = doc.getElementsByTagName("container");
+		for (int idx = 0; idx < containers.getLength(); idx++) {
+			Node container = containers.item(idx);
+			if (container.getNodeType() == Node.ELEMENT_NODE) {
+				Element containerElement = (Element) container;
+				String containerName = containerElement.getAttribute("name");
+				System.out.println("Container Name " + containerName);
+				getNamespacesForDoc(doc, containerName);
+			}
+		}
+		
 	}
 
-	private void getNamespacesForDoc(Document doc) {
+	private void getNamespacesForDoc(Document doc, String containerName) {
+		
 		NodeList namespaces = doc.getElementsByTagName("namespace");
 		for (int idx = 0; idx < namespaces.getLength(); idx++) {
 			Node namespace = namespaces.item(idx);
 			if (namespace.getNodeType() == Node.ELEMENT_NODE) {
 				Element namespaceElement = (Element) namespace;
 				String packageName = namespaceElement.getAttribute("name");
-				getTypesForNameSpace(namespaceElement, packageName);
+				getTypesForNameSpace(namespaceElement, packageName, containerName);
 
 			}
 		}
 	}
 
 	private void getTypesForNameSpace(Element namespaceElement,
-			String packageName) {
+			String packageName, String containerName) {
 		if (packageName.startsWith(ING_FILTER)) {
 			NodeList typesNodes = namespaceElement.getChildNodes();
 			for (int idy = 0; idy < typesNodes.getLength(); idy++) {
@@ -165,9 +165,9 @@ public class Cda2Graph {
 					Element typeElement = (Element) typeNode;
 					String name = typeElement.getAttribute("name");
 					if (!toBeIgnored(name)) {
-						CdaNode node = getNewNode(name);
+						CdaNode node = getNewNode(name, containerName);
 						node.type = typeElement.getAttribute("classification");
-						getDependenciesForType(typeElement, node);
+						getDependenciesForType(typeElement, node, containerName);
 						data.graph.nodeList.put(node.name, node);
 					}
 				}
@@ -176,30 +176,30 @@ public class Cda2Graph {
 		}
 	}
 
-	private void getDependenciesForType(Element typeElement, CdaNode node) {
+	private void getDependenciesForType(Element typeElement, CdaNode node, String containerName) {
 		NodeList dependencies = typeElement.getChildNodes();
 		for (int idz = 0; idz < dependencies.getLength(); idz++) {
 			Node dependenciesNode = dependencies.item(idz);
 			if (dependenciesNode.getNodeType() == Node.ELEMENT_NODE) {
 				Element dependenciesElement = (Element) dependenciesNode;
-				getDependsOnForDependencies(dependenciesElement, node);
+				getDependsOnForDependencies(dependenciesElement, node, containerName);
 			}
 		}
 	}
 
 	private void getDependsOnForDependencies(Element dependenciesElement,
-			CdaNode node) {
+			CdaNode node, String containerName) {
 		NodeList dependsOnList = dependenciesElement.getChildNodes();
 		for (int i = 0; i < dependsOnList.getLength(); i++) {
 			Node dependsOnNode = dependsOnList.item(i);
 			if (dependsOnNode.getNodeType() == Node.ELEMENT_NODE) {
 				Element dependsOnElement = (Element) dependsOnNode;
-				extractHierarchy(dependsOnElement, node);
+				extractHierarchy(dependsOnElement, node, containerName);
 			}
 		}
 	}
 
-	private void extractHierarchy(Element dependsOnElement, CdaNode node) {
+	private void extractHierarchy(Element dependsOnElement, CdaNode node, String containerName) {
 		String name = dependsOnElement.getAttribute("name");
 		if (!name.startsWith(ING_FILTER)) {
 			return;
@@ -208,7 +208,7 @@ public class Cda2Graph {
 			return;
 		}
 		String classification = dependsOnElement.getAttribute("classification");
-		CdaNode nodeToAdd = getNewNode(name);
+		CdaNode nodeToAdd = getNewNode(name, containerName);
 		if (classification.equals("extends")) {
 			node.parent = nodeToAdd;
 		} else if (classification.equals("implements")) {
@@ -218,11 +218,11 @@ public class Cda2Graph {
 		}
 	}
 
-	private CdaNode getNewNode(String name) {
+	private CdaNode getNewNode(String name, String containerName) {
 		CdaNode nodeToAdd = data.graph.nodeList.get(name);
 		
 		if (nodeToAdd == null) {
-			nodeToAdd = new CdaNode(name);
+			nodeToAdd = new CdaNode(name, containerName);
 			data.graph.nodeList.put(name, nodeToAdd);
 		}
 
@@ -234,22 +234,6 @@ public class Cda2Graph {
 		neo4j.insertGraphToNeo4j();
 	}
 	
-	
-	private void writeNbDependenciesPerCommand(String outputFile) throws Exception {
-		String nbFileName = outputFile;
-		nbFileName += ".nbdep";
-		File file = new File(nbFileName);
-		System.out.println("NbDep File : " + file.getAbsolutePath());
-		FileWriter writer = new FileWriter(file);
-		BufferedWriter bufferedWriter = new BufferedWriter(writer, 512);
-		PrintWriter printWriter = new PrintWriter(bufferedWriter, true);
-		Map<CdaNode, Integer> sortedMap = sortByValue(data.nbDependenciesPerCommand);
-		for (Map.Entry<CdaNode, Integer> entry : sortedMap.entrySet()) {
-			printWriter.println(entry.getKey().name + " : " + entry.getValue());
-		}
-		printWriter.flush();
-		printWriter.close();
-	}
 
 	private boolean toBeIgnored(String name) {
 		return name == null || excludePackage(name) || excludeClass(name);
@@ -273,25 +257,4 @@ public class Cda2Graph {
 		return false;
 	}
 	
-
-	
-	
-	private Map<CdaNode, Integer> sortByValue(Map<CdaNode, Integer> map) {
-	     List<Entry<CdaNode, Integer>> list = new LinkedList<Entry<CdaNode, Integer>>(map.entrySet());
-	     Collections.sort(list, new Comparator<Entry<CdaNode, Integer>>() {
-	          public int compare(Entry<CdaNode, Integer> o1, Entry<CdaNode, Integer> o2) {
-	               return ((Comparable<Integer>) ((Map.Entry<CdaNode, Integer>) (o1)).getValue())
-	              .compareTo(((Map.Entry<CdaNode, Integer>) (o2)).getValue());
-	          }
-
-	     });
-
-	    Map<CdaNode, Integer> result = new LinkedHashMap<CdaNode, Integer>();
-	    for (Iterator<Map.Entry<CdaNode, Integer>> it = list.iterator(); it.hasNext();) {
-	        Map.Entry<CdaNode, Integer> entry =  it.next();
-	        result.put(entry.getKey(), entry.getValue());
-	    }
-	    return result;
-	} 
-
 }

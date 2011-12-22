@@ -2,13 +2,15 @@ package com.octo.cda2neo4j;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.cypher.ExecutionEngine;
+import org.neo4j.cypher.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -16,10 +18,13 @@ import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 
+import scala.collection.Iterator;
+
 public class QueriesTest {
 	
 	private GraphDatabaseService graphDb;
 	private Index<Node> nodeIndex;
+	ExecutionEngine engine;
 
 	private static final String DB_PATH = "neo4j-store";
 
@@ -30,6 +35,7 @@ public class QueriesTest {
 		graphDb = new EmbeddedGraphDatabase(DB_PATH, config);
 		Cda2Neo4j.registerShutdownHook(graphDb);
 		nodeIndex = graphDb.index().forNodes("nodes");
+		engine = new ExecutionEngine(graphDb);
 	}
 	
 	@Test
@@ -43,15 +49,67 @@ public class QueriesTest {
 		for (Node n : nodes) {
 			System.out.println(n.getProperty("id"));
 			System.out.println(n.getProperty("className"));
+			System.out.println(n.getProperty("containerName"));
 			for (Relationship r : n.getRelationships()) {
-				System.out.println(r.getType().toString());
-				System.out.println(r.getEndNode().getProperty("className"));
+				System.out.println(r.getType().toString() + " " + r.getEndNode().getProperty("className"));
 			}
 		}
 		System.out.println(nodes.size());
 		assertNotNull(nodes);
 	}
 	
+	
+	@Test
+	public void searchNodeWithCypher() {
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put( "query", "className:com.ingdirect.afp.mq.server.MQXMLCommand" );
+		ExecutionResult result = engine.execute( "start n=node:nodes({query}) return n", params );
+		Iterator<Node> it = result.columnAs( "n" );
+		while (it.hasNext()) {
+			Node res = it.next();
+			System.out.println(res.getProperty("className"));
+			System.out.println(res.getProperty("containerName"));
+		}
+	}
+	
+	@Test
+	public void searchRelationShipWithCyper() {
+		
+		ExecutionResult result = engine.execute( "START r=relationship(0) RETURN r");
+		Iterator<Relationship> it = result.columnAs("r");
+		while (it.hasNext()) {
+			Relationship res = it.next();
+			System.out.println(res.getType().toString());
+			
+		}
+	}
+	
+	@Test
+	public void serachNodeLinkedByOutgoingRelationShips() {
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put( "query", "className:com.ingdirect.afp.mq.server.MQXMLCommand" );
+		ExecutionResult result = engine.execute("START n=node:nodes({query}) MATCH (n)-->(x) RETURN x", params);
+		Iterator<Node> it = result.columnAs("x");
+		while (it.hasNext()) {
+			Node res = it.next();
+			System.out.println(res.getProperty("className"));
+			System.out.println(res.getProperty("containerName"));
+			
+		}
+	}
+	
+	@Test
+	public void searchRelationShipsForNode() {
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put( "query", "className:com.ingdirect.afp.mq.server.MQXMLCommand" );
+		ExecutionResult result = engine.execute("START n=node:nodes({query}) MATCH (n)-[r]->() RETURN r", params);
+		Iterator<Relationship> it = result.columnAs("r");
+		while (it.hasNext()) {
+			Relationship res = it.next();
+			System.out.println(res.getType().toString());
+			
+		}
+	}
 	
 	@After
 	public void after() {

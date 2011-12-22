@@ -7,6 +7,8 @@ public class CdaNode {
 
 	public String name;
 
+	public String containerName;
+	
 	public CdaNode parent;
 
 	public String type;
@@ -15,8 +17,9 @@ public class CdaNode {
 
 	public Set<CdaNode> useds = new HashSet<CdaNode>();
 
-	public CdaNode(String name2) {
+	public CdaNode(String name2, String containerName) {
 		this.name = name2;
+		this.containerName = containerName;
 	}
 
 	@Override

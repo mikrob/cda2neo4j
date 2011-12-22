@@ -51,21 +51,21 @@ public class Cda2Neo4j {
 				String className = node.getKey();
 				CdaNode nodeContent = node.getValue();
 				// create the neo4j node
-				Node neoNode = createNeo4jNode(className);
+				Node neoNode = createNeo4jNode(className, nodeContent.containerName);
 				// extends
 				if (nodeContent.parent != null) {
-					Node neoNodeParent = createNeo4jNode(nodeContent.parent.name);
+					Node neoNodeParent = createNeo4jNode(nodeContent.parent.name, nodeContent.parent.containerName);
 					neoNode.createRelationshipTo(neoNodeParent, RelTypes.EXTENDS);
 				}
 				
 				//implements
 				for (CdaNode interf : nodeContent.implementz) {
-					Node interfaceImplemented = createNeo4jNode(interf.name);
+					Node interfaceImplemented = createNeo4jNode(interf.name, interf.containerName);
 					neoNode.createRelationshipTo(interfaceImplemented, RelTypes.IMPLEMENTS);
 				}
 				// use
 				for (CdaNode uzed : nodeContent.useds) {
-					Node classUsed = createNeo4jNode(uzed.name);
+					Node classUsed = createNeo4jNode(uzed.name, uzed.containerName);
 					neoNode.createRelationshipTo(classUsed, RelTypes.USE);
 				}
 			}
@@ -79,14 +79,16 @@ public class Cda2Neo4j {
 	}
 
 	// Create a node and add it to index
-	private Node createNeo4jNode(String className) {
+	private Node createNeo4jNode(String className, String containerName) {
 		IndexHits<Node> exist = nodeIndex.get("className", className);
 		Node result;
 		if (exist.size() == 0) {
 			Node neoNode = graphDb.createNode();
 			neoNode.setProperty("className", className);
-			neoNode.setProperty("id", customid++);
+			neoNode.setProperty("containerName", containerName);
+			neoNode.setProperty("id", String.valueOf(customid++));
 			nodeIndex.add(neoNode, "className", className);
+			
 			result = neoNode;
 		} else {
 			result = exist.next();
