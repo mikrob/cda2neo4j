@@ -17,6 +17,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.kernel.impl.core.NodeManager;
 
 import scala.collection.Iterator;
 
@@ -109,6 +110,20 @@ public class QueriesTest {
 			System.out.println(res.getType().toString());
 			
 		}
+	}
+	
+	@Test
+	public void findDeadCode() {
+	  NodeManager nodeManager = ((EmbeddedGraphDatabase)graphDb).getConfig().getGraphDbModule().getNodeManager();
+	  long number = nodeManager.getNumberOfIdsInUse(Node.class);
+	  for (int idx  = 0; idx < number; idx++) {
+		  Node node = nodeManager.getNodeById(idx);
+		  System.out.println(node.getPropertyKeys());
+		  System.out.println(node.getPropertyValues());
+		  if (!node.hasRelationship()) {
+			  System.out.println("Node doesn't have relationships");
+		  }
+	  }
 	}
 	
 	@After
