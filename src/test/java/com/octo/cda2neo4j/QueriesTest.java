@@ -14,7 +14,6 @@ import org.neo4j.cypher.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -45,6 +44,7 @@ public class QueriesTest {
 		assertEquals("nodes", nodeIndex.getName());
 	}
 
+	// query on index without cypher
 	@Test
 	public void testQuery() {
 		IndexHits<Node> nodes = nodeIndex.get("className",
@@ -61,6 +61,7 @@ public class QueriesTest {
 		assertNotNull(nodes);
 	}
 
+	// search node by his name
 	@Test
 	public void searchNodeWithCypher() {
 		Map<String, Object> params = new HashMap<String, Object>();
@@ -75,7 +76,8 @@ public class QueriesTest {
 			System.out.println(res.getProperty("containerName"));
 		}
 	}
-
+	
+	// search outgoing relations ships for a given node with its className
 	@Test
 	public void searchRelationShipWithCyper() {
 
@@ -89,6 +91,7 @@ public class QueriesTest {
 		}
 	}
 
+	// search outgoing relations ships for a given node with its className
 	@Test
 	public void serachNodeLinkedByOutgoingRelationShips() {
 		Map<String, Object> params = new HashMap<String, Object>();
@@ -105,6 +108,7 @@ public class QueriesTest {
 		}
 	}
 
+	// search relations ships for a given node with its className
 	@Test
 	public void searchRelationShipsForNode() {
 		Map<String, Object> params = new HashMap<String, Object>();
@@ -121,6 +125,7 @@ public class QueriesTest {
 		}
 	}
 
+	// Search a node with its id
 	@Test
 	public void searcbyId() {
 		Map<String, Object> params = new HashMap<String, Object>();
@@ -136,6 +141,7 @@ public class QueriesTest {
 		}
 	}
 
+	// find all node with no relationships
 	@Test
 	public void findDeadCode() {
 		NodeManager nodeManager = ((EmbeddedGraphDatabase) graphDb).getConfig()
