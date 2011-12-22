@@ -73,7 +73,6 @@ public class Cda2Neo4j {
 		} finally {
 			tx.finish();
 		}
-		System.out.println("Graph size : " + nodeIndex.getName());
 		graphDb.shutdown();
 		System.out.println("End insertion in neo4j");
 	}
@@ -84,9 +83,10 @@ public class Cda2Neo4j {
 		Node result;
 		if (exist.size() == 0) {
 			Node neoNode = graphDb.createNode();
+			System.out.println(className);
 			neoNode.setProperty("className", className);
 			neoNode.setProperty("containerName", containerName);
-			neoNode.setProperty("id", String.valueOf(customid++));
+			System.out.println(containerName);
 			nodeIndex.add(neoNode, "className", className);
 			
 			result = neoNode;
