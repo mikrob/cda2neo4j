@@ -147,10 +147,12 @@ public class QueriesTest {
 		NodeManager nodeManager = ((EmbeddedGraphDatabase) graphDb).getConfig()
 				.getGraphDbModule().getNodeManager();
 		long number = nodeManager.getNumberOfIdsInUse(Node.class);
+		int counter = 0;
 		for (int idx = 0; idx < number; idx++) {
 			Node n = nodeManager.getNodeById(idx);
 			if (!n.hasRelationship()) {
 				System.out.println("This one has no relationships");
+				counter++;
 				for (String key : n.getPropertyKeys()) {
 					System.out.println(key + " : " + n.getProperty(key));
 
@@ -158,6 +160,7 @@ public class QueriesTest {
 				System.out.println();
 			}
 		}
+		System.out.println("Counter: " + counter);
 	}
 
 
