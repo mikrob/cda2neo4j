@@ -2,7 +2,7 @@ target/
 .project
 .settings
 .classpath
-DGNG.odem
+*.odem
 DG_without_cycle.xml
 dgold.xml
 odem-1.1.dtd
