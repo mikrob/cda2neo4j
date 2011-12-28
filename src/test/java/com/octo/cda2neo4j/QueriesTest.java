@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.cypher.ExecutionEngine;
 import org.neo4j.cypher.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -143,7 +144,7 @@ public class QueriesTest {
 
 	// find all node with no relationships
 	@Test
-	public void findDeadCode() {
+	public void findOrpheanNodes() {
 		NodeManager nodeManager = ((EmbeddedGraphDatabase) graphDb).getConfig()
 				.getGraphDbModule().getNodeManager();
 		long number = nodeManager.getNumberOfIdsInUse(Node.class);
@@ -161,6 +162,32 @@ public class QueriesTest {
 			}
 		}
 		System.out.println("Counter: " + counter);
+	}
+	
+	@Test
+	public void findNodesWithNoEntranceLinks() {
+		NodeManager nodeManager = ((EmbeddedGraphDatabase) graphDb).getConfig()
+				.getGraphDbModule().getNodeManager();
+		long number = nodeManager.getNumberOfIdsInUse(Node.class);
+		int counter = 0;
+		for (int idx = 0; idx < number; idx++) {
+			Node n = nodeManager.getNodeById(idx);
+			int nb = 0;
+			for (@SuppressWarnings("unused") Relationship r : n.getRelationships(Direction.INCOMING)) {
+				nb++;
+			}
+			if (nb == 0) {
+				for (String key : n.getPropertyKeys()) {
+					if (key.startsWith("className") && ! ((String)n.getProperty(key)).endsWith("Command")) {
+						counter++;
+						System.out.println(key + " : " + n.getProperty(key));
+					}
+					
+				}
+			}
+			
+		}
+		System.out.println("Number of node without incoming relations : " + counter + " theses node represent dead code (classes not used), you should delete application entrance point of this list");
 	}
 
 
