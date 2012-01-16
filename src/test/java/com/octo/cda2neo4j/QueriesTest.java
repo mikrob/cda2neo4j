@@ -3,6 +3,8 @@ package com.octo.cda2neo4j;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,7 +92,11 @@ public class QueriesTest {
 			System.out.println(res.getType().toString());
 
 		}
+
+		
 	}
+	
+
 
 	// search outgoing relations ships for a given node with its className
 	@Test
